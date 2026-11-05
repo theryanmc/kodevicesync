@@ -40,9 +40,11 @@ def env_bool(name: str, default: bool) -> bool:
 
 BASE = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("KDS_DATA_DIR", "/data"))
-# In the Docker image the plugin release is unpacked here at build time. For local
-# development, point KDS_PLUGIN_DIR at a checkout of theryanmc/kodevicesync.koplugin.
-PLUGIN_DIR = Path(os.environ.get("KDS_PLUGIN_DIR", "/app/plugin/kodevicesync.koplugin"))
+# /plugin.zip redirects here, so devices always get the newest plugin release.
+PLUGIN_URL = os.environ.get(
+    "KDS_PLUGIN_URL",
+    "https://github.com/theryanmc/kodevicesync.koplugin/releases/latest/download/kodevicesync.koplugin.zip",
+)
 ALLOW_SIGNUP = env_bool("KDS_ALLOW_SIGNUP", True)
 SECURE_COOKIES = env_bool("KDS_SECURE_COOKIES", False)
 MAX_UPLOAD_BYTES = int(os.environ.get("KDS_MAX_UPLOAD_MB", "200")) * 1024 * 1024
@@ -729,13 +731,5 @@ def revoke_device(token_id: int, request: Request):
 
 @app.get("/plugin.zip")
 def plugin_zip():
-    """The KOReader plugin itself, so a new device can be bootstrapped from the server."""
-    if not PLUGIN_DIR.is_dir():
-        raise HTTPException(404, "Plugin bundle not found on server")
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for p in sorted(PLUGIN_DIR.rglob("*")):
-            if p.is_file():
-                zf.write(p, f"kodevicesync.koplugin/{p.relative_to(PLUGIN_DIR).as_posix()}")
-    return Response(buf.getvalue(), media_type="application/zip",
-                    headers={"Content-Disposition": 'attachment; filename="kodevicesync.koplugin.zip"'})
+    """Short link for installing the KOReader plugin: redirects to its latest GitHub release."""
+    return RedirectResponse(PLUGIN_URL, status_code=302)

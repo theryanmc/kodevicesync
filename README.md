@@ -73,6 +73,7 @@ The image is published for `linux/amd64` and `linux/arm64`, so it also runs on a
 | `KDS_MAX_UPLOAD_MB`  | `200`       | Largest single file or zip upload. |
 | `KDS_SECURE_COOKIES` | `false`     | Set `true` if the web UI is only reached over HTTPS. |
 | `PUID` / `PGID`      | `99` / `100`| User and group the server runs as and that own `/data`. |
+| `KDS_PLUGIN_URL`     | latest GitHub release | Where `/plugin.zip` redirects to. |
 
 Everything (database and stored files) lives in `/data`. Back up that folder.
 
@@ -86,7 +87,7 @@ Everything (database and stored files) lives in `/data`. Back up that folder.
    - **Storefront:** search for *KODeviceSync*.
    - **The latest release:** download `kodevicesync.koplugin.zip` from the
      [latest release](https://github.com/theryanmc/kodevicesync.koplugin/releases/latest).
-   - **Your server:** download `http://<server>:1379/plugin.zip`.
+   - **Your server:** `http://<server>:1379/plugin.zip` is a short link to the latest release.
 
    Unzip it so you get `koreader/plugins/kodevicesync.koplugin/`, then restart KOReader.
 3. In KOReader, open **Tools (🔧) › KODeviceSync**, set **Server** to `http://<server>:1379`, and **Log in**.
@@ -116,23 +117,21 @@ Everything (database and stored files) lives in `/data`. Back up that folder.
 ```
 server/app/main.py          FastAPI app: web UI + JSON API, SQLite, file storage
 server/app/templates/       dashboard and login pages
-Dockerfile                  image; bundles the latest plugin release for /plugin.zip
+Dockerfile                  the server image
 unraid/kodevicesync.xml     Unraid template
 .github/workflows/docker.yml  builds ghcr.io/theryanmc/kodevicesync on every push to main
 ```
 
-Run locally with a checkout of the plugin repo next to this one:
+Run locally:
 
 ```sh
 cd server
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-KDS_DATA_DIR=./data KDS_PLUGIN_DIR=../../kodevicesync.koplugin \
-  .venv/bin/uvicorn app.main:app --reload --port 1379
+KDS_DATA_DIR=./data .venv/bin/uvicorn app.main:app --reload --port 1379
 ```
 
-The image bundles whichever plugin release is newest when it's built. After releasing a new
-plugin version, re-run the **Build and publish image** workflow (Actions tab › Run workflow) so
-`/plugin.zip` serves it. To pin a version: `docker build --build-arg PLUGIN_VERSION=v1.0.0 .`
+`/plugin.zip` redirects to the plugin's latest GitHub release, so the server never needs
+rebuilding when the plugin changes. Set `KDS_PLUGIN_URL` to point it somewhere else.
 
 API used by the plugin: `POST /api/login` · `POST /api/logout` · `GET /api/manifest` ·
 `POST /api/blobs/missing` · `PUT|GET /api/blobs/{md5}` · `POST /api/items` · `POST /api/items/delete`.

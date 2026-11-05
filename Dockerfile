@@ -1,27 +1,14 @@
 FROM python:3.12-slim
 
-# Which release of the KOReader plugin to bundle (served at /plugin.zip).
-# "latest" or a tag such as "v1.0.0".
-ARG PLUGIN_REPO=theryanmc/kodevicesync.koplugin
-ARG PLUGIN_VERSION=latest
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     KDS_DATA_DIR=/data \
-    KDS_PLUGIN_DIR=/app/plugin/kodevicesync.koplugin \
     PUID=99 \
     PGID=100
 
 WORKDIR /app
 COPY server/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
-
-RUN python -c "import io,os,urllib.request,zipfile; \
-repo,ver=os.environ['PLUGIN_REPO'],os.environ['PLUGIN_VERSION']; \
-url=f'https://github.com/{repo}/releases/'+('latest/download' if ver=='latest' else 'download/'+ver)+'/kodevicesync.koplugin.zip'; \
-print('Bundling plugin from',url); \
-zipfile.ZipFile(io.BytesIO(urllib.request.urlopen(url,timeout=60).read())).extractall('/app/plugin'); \
-assert os.path.isfile('/app/plugin/kodevicesync.koplugin/main.lua'),'plugin zip has unexpected layout'"
 
 COPY server/app /app/app
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
