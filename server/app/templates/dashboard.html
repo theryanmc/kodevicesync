@@ -8,8 +8,9 @@
 <details class="card" {% if item_count == 0 %}open{% endif %}>
   <summary><strong>Set up a device</strong></summary>
   <ol class="steps">
-    <li>Download <a href="/plugin.zip">kodevicesync.koplugin.zip</a> and unzip it into your KOReader <code>plugins/</code> folder
-      (Kobo/Kindle: <code>koreader/plugins/</code>, Android: <code>koreader/plugins/</code> on internal storage).</li>
+    <li>Install the KOReader plugin. Either search for <em>KODeviceSync</em> in Storefront, or download
+      <a href="/plugin.zip">kodevicesync.koplugin.zip</a> and unzip it into KOReader's <code>plugins/</code> folder
+      (<a href="https://github.com/theryanmc/kodevicesync.koplugin">plugin on GitHub</a>).</li>
     <li>Restart KOReader, then open <em>Tools &rsaquo; KODeviceSync</em>.</li>
     <li>Set the server to <code>{{ server_url }}</code> and log in as <strong>{{ user.username }}</strong>.</li>
     <li>On your main device: <em>Choose what to sync</em>, then <em>Push this device's setup</em>.<br>

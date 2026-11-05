@@ -1,15 +1,16 @@
 services:
   kodevicesync:
-    build: .
-    image: kodevicesync:latest
+    image: ghcr.io/theryanmc/kodevicesync:latest
+    # To build from this checkout instead, comment out `image` and uncomment:
+    # build: .
     container_name: kodevicesync
     restart: unless-stopped
     ports:
       - "1379:1379"
     environment:
-      PUID: "99"
-      PGID: "100"
+      PUID: "1000"                 # user that owns ./data (Unraid: 99)
+      PGID: "1000"                 # group that owns ./data (Unraid: 100)
       KDS_ALLOW_SIGNUP: "true"     # set to "false" once you've created your profile
       KDS_MAX_UPLOAD_MB: "200"
     volumes:
-      - /mnt/user/appdata/kodevicesync:/data
+      - ./data:/data

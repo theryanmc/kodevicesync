@@ -40,7 +40,9 @@ def env_bool(name: str, default: bool) -> bool:
 
 BASE = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("KDS_DATA_DIR", "/data"))
-PLUGIN_DIR = Path(os.environ.get("KDS_PLUGIN_DIR", BASE.parent.parent / "plugin" / "kodevicesync.koplugin"))
+# In the Docker image the plugin release is unpacked here at build time. For local
+# development, point KDS_PLUGIN_DIR at a checkout of theryanmc/kodevicesync.koplugin.
+PLUGIN_DIR = Path(os.environ.get("KDS_PLUGIN_DIR", "/app/plugin/kodevicesync.koplugin"))
 ALLOW_SIGNUP = env_bool("KDS_ALLOW_SIGNUP", True)
 SECURE_COOKIES = env_bool("KDS_SECURE_COOKIES", False)
 MAX_UPLOAD_BYTES = int(os.environ.get("KDS_MAX_UPLOAD_MB", "200")) * 1024 * 1024

@@ -1,132 +1,139 @@
-# KODeviceSync
+# KODeviceSync server
 
 Keep one profile of your KOReader add-ons on your own server, and set up any
 new e-reader to match by installing a single plugin.
 
-It syncs:
-
-| Category      | Folder on the device (inside KOReader's data dir) |
-|---------------|---------------------------------------------------|
-| Plugins       | `plugins/*.koplugin`                              |
-| User patches  | `patches/*.lua`                                   |
-| Fonts         | `fonts/` (font files and font folders)            |
-| Style tweaks  | `styletweaks/`                                    |
+This repo is the **server**: a small web app with a JSON API, shipped as a
+Docker image. The **KOReader plugin** lives in its own repo,
+[theryanmc/kodevicesync.koplugin](https://github.com/theryanmc/kodevicesync.koplugin),
+so plugin catalogs like Storefront can install it.
 
 ```
- ┌──────────── Kobo (set up) ───────────┐        ┌─ Unraid ───────────────┐        ┌─ New Kindle ─────────┐
- │ KODeviceSync ▸ Choose what to sync    │  push  │ kodevicesync container │  pull  │ KODeviceSync ▸ Pull  │
- │ KODeviceSync ▸ Push                   │ ─────▶ │ web UI + SQLite + files│ ─────▶ │ restart → identical  │
- └───────────────────────────────────────┘        └────────────────────────┘        └──────────────────────┘
+ Kobo (set up)                         KODeviceSync server                      New Kindle
+ ─────────────                         ───────────────────                      ──────────
+ Choose what to sync  ──── push ────▶  profile: plugins, patches,  ──── pull ──▶  restart → same
+ Push                                  fonts, style tweaks                       add-ons as the Kobo
 ```
 
-## Repository layout
+What gets synced: `plugins/*.koplugin`, `patches/*.lua`, `fonts/` and `styletweaks/`.
+KOReader's built-in plugins and fonts are detected and left alone.
 
-```
-server/                     FastAPI app (web UI + JSON API), SQLite, file storage
-plugin/kodevicesync.koplugin  the KOReader plugin
-Dockerfile, docker-compose.yml, docker-entrypoint.sh
-unraid/kodevicesync.xml     Unraid container template
-.github/workflows/docker.yml  builds & publishes ghcr.io/theryanmc/kodevicesync
-```
+---
 
-## 1. Run the server on Unraid
+## Run it on Unraid
 
-The container listens on **1379** and keeps everything in **/data**
-(map it to `/mnt/user/appdata/kodevicesync`). It runs as `99:100`
-(nobody:users), Unraid's default.
+1. Open the Unraid terminal (the **>_** icon at the top right) and install the template:
 
-**Option A: publish an image (recommended).** Push this repo to GitHub. The
-included workflow builds `ghcr.io/theryanmc/kodevicesync:latest` for amd64 and
-arm64. Make the package public (or log Unraid into ghcr). Then:
+   ```sh
+   curl -fsSL -o /boot/config/plugins/dockerMan/templates-user/my-kodevicesync.xml \
+     https://raw.githubusercontent.com/theryanmc/kodevicesync/main/unraid/kodevicesync.xml
+   ```
 
-1. Copy `unraid/kodevicesync.xml` to
-   `/boot/config/plugins/dockerMan/templates-user/my-kodevicesync.xml`.
-2. In Unraid, go to **Docker › Add Container**, pick the **kodevicesync** template, and click **Apply**.
+2. Go to **Docker › Add Container**. In the **Template** drop-down, pick **kodevicesync** under *User templates*.
+3. Check the settings, then click **Apply**:
 
-**Option B: build on the server.** Copy the repo to Unraid, then:
+   | Setting           | Default                           |
+   |-------------------|-----------------------------------|
+   | Web UI / API port | `1379`                            |
+   | Data              | `/mnt/user/appdata/kodevicesync`  |
+   | Allow sign-ups    | `true` (set to `false` after creating your profile) |
+
+4. Click the container icon and choose **WebUI**, or open `http://<unraid-ip>:1379`.
+
+Updates arrive through Unraid's normal **Check for Updates** on the Docker tab.
+
+## Run it with Docker
+
+**docker run**
 
 ```sh
-cd /mnt/user/appdata/kodevicesync-src
-docker build -t kodevicesync:latest .
 docker run -d --name kodevicesync --restart unless-stopped \
-  -p 1379:1379 -v /mnt/user/appdata/kodevicesync:/data kodevicesync:latest
+  -p 1379:1379 \
+  -v /path/to/kodevicesync-data:/data \
+  -e PUID=$(id -u) -e PGID=$(id -g) \
+  ghcr.io/theryanmc/kodevicesync:latest
 ```
 
-With the Compose Manager plugin, you can run `docker compose up -d --build` instead.
+**docker compose**: save [`docker-compose.yml`](docker-compose.yml), set `PUID`/`PGID` to the user that
+should own `./data`, then run:
 
-### Settings (environment variables)
+```sh
+docker compose up -d
+```
 
-| Variable             | Default | Meaning |
-|----------------------|---------|---------|
-| `KDS_ALLOW_SIGNUP`   | `true`  | Allow creating profiles from the login page. Set to `false` once you've made yours. |
-| `KDS_MAX_UPLOAD_MB`  | `200`   | Largest single file or zip upload. |
-| `KDS_SECURE_COOKIES` | `false` | Set `true` if the web UI is only reached over HTTPS. |
-| `PUID` / `PGID`      | `99`/`100` | User the server runs as. |
+To update: `docker compose pull && docker compose up -d` (or `docker pull` and re-run).
 
-## 2. Create your profile
+The image is published for `linux/amd64` and `linux/arm64`, so it also runs on a Raspberry Pi or a Synology.
 
-Open `http://<unraid-ip>:1379`, click **Create a profile**, and pick a username and password.
+### Settings
 
-## 3. Install the plugin on a device
+| Variable             | Default     | Meaning |
+|----------------------|-------------|---------|
+| `KDS_ALLOW_SIGNUP`   | `true`      | Allow creating profiles from the login page. Set to `false` once you've made yours. |
+| `KDS_MAX_UPLOAD_MB`  | `200`       | Largest single file or zip upload. |
+| `KDS_SECURE_COOKIES` | `false`     | Set `true` if the web UI is only reached over HTTPS. |
+| `PUID` / `PGID`      | `99` / `100`| User and group the server runs as and that own `/data`. |
 
-Download the plugin from the server itself at `http://<unraid-ip>:1379/plugin.zip`
-(the dashboard links to it), or copy `plugin/kodevicesync.koplugin` from this repo.
-Unzip it so you end up with:
+Everything (database and stored files) lives in `/data`. Back up that folder.
 
-- Kobo / Kindle / PocketBook: `koreader/plugins/kodevicesync.koplugin/`
-- Android: `koreader/plugins/kodevicesync.koplugin/` on internal storage
-- Linux desktop: `~/.config/koreader/plugins/kodevicesync.koplugin/`
+---
 
-Restart KOReader. The plugin is under **Tools (🔧) › KODeviceSync**.
+## Set up your devices
 
-## 4. Use it
+1. Open `http://<server>:1379`, click **Create a profile**, and choose a username and password.
+   There is no default account.
+2. Install the KOReader plugin on each device, using any one of these:
+   - **Storefront:** search for *KODeviceSync*.
+   - **The latest release:** download `kodevicesync.koplugin.zip` from the
+     [latest release](https://github.com/theryanmc/kodevicesync.koplugin/releases/latest).
+   - **Your server:** download `http://<server>:1379/plugin.zip`.
 
-On every device: set **Server** to `http://<unraid-ip>:1379`, then **Log in**.
-
-**On your main, set-up device:**
-1. Open **Choose what to sync**. For each category, tick individual items or turn on
-   *Sync all, including ones added later*. On Kobo and Kindle, KOReader's built-in
-   plugins sit in the same `plugins/` folder as yours, so tick only the ones you
-   installed yourself.
-2. Tap **Push this device's setup to server**.
-
-**On a new device:**
-1. Tap **Pull setup from server**. It shows what's new or changed, downloads it,
-   checks every file's checksum, then offers to restart KOReader.
-
-Pulled items are automatically ticked on that device, so later pushes from
-there keep the profile up to date. Only changed files are transferred.
+   Unzip it so you get `koreader/plugins/kodevicesync.koplugin/`, then restart KOReader.
+3. In KOReader, open **Tools (🔧) › KODeviceSync**, set **Server** to `http://<server>:1379`, and **Log in**.
+4. On your main device: open **Choose what to sync**, then **Push this device's setup to server**.
+   On a new device: **Pull setup from server**, then restart when asked.
 
 ### The web dashboard
 
-- See everything in your profile, with sizes and which device last pushed each item.
-- **Upload** add-ons straight from your computer. Plugin release zips and
-  GitHub's "Download ZIP" both work (it finds the folder containing `main.lua`).
-  Patches, fonts and style tweaks can be single files or a zip.
-- **Download** any item as a zip, or **Remove** it from the profile.
-- See signed-in devices and sign out any of them.
+- See everything in your profile, and which device last pushed each item.
+- Upload add-ons from your computer. Plugin release zips and GitHub's *Download ZIP* both work.
+- Download any item as a zip, or remove it from the profile.
+- See signed-in devices and sign any of them out.
 
 ## Behaviour and limits
 
-- **Nothing is deleted from devices.** Removing an item from the profile stops it
-  syncing to new devices. It isn't uninstalled from devices that already have it.
-- Plugin *settings* (files in `koreader/settings/`) and `settings.reader.lua`
-  aren't synced. Those tend to be device-specific.
-- The plugin never syncs or overwrites itself.
-- Auth: passwords are stored with scrypt. Each device gets its own revocable token.
-  Traffic is plain HTTP unless you put the server behind an HTTPS reverse proxy
-  (the plugin supports `https://` URLs). Keep it on your LAN or VPN, or behind a proxy.
+- **Nothing is deleted from devices.** Removing an item from the profile stops it syncing
+  to new devices. It isn't uninstalled from devices that already have it.
+- Plugin settings (`koreader/settings/`) aren't synced. They tend to be device-specific.
+- Passwords are stored with scrypt. Each device gets its own revocable token.
+- Traffic is plain HTTP. Keep the server on your LAN or VPN, or put it behind an HTTPS reverse proxy.
+  The plugin accepts `https://` addresses.
 
-## API (used by the plugin)
-
-`POST /api/login` · `POST /api/logout` · `GET /api/manifest` ·
-`POST /api/blobs/missing` · `PUT|GET /api/blobs/{md5}` · `POST /api/items` ·
-`POST /api/items/delete`. Interactive docs are at `/api/docs`.
+---
 
 ## Development
+
+```
+server/app/main.py          FastAPI app: web UI + JSON API, SQLite, file storage
+server/app/templates/       dashboard and login pages
+Dockerfile                  image; bundles the latest plugin release for /plugin.zip
+unraid/kodevicesync.xml     Unraid template
+.github/workflows/docker.yml  builds ghcr.io/theryanmc/kodevicesync on every push to main
+```
+
+Run locally with a checkout of the plugin repo next to this one:
 
 ```sh
 cd server
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-KDS_DATA_DIR=./data KDS_PLUGIN_DIR=../plugin/kodevicesync.koplugin .venv/bin/uvicorn app.main:app --reload --port 1379
+KDS_DATA_DIR=./data KDS_PLUGIN_DIR=../../kodevicesync.koplugin \
+  .venv/bin/uvicorn app.main:app --reload --port 1379
 ```
+
+The image bundles whichever plugin release is newest when it's built. After releasing a new
+plugin version, re-run the **Build and publish image** workflow (Actions tab › Run workflow) so
+`/plugin.zip` serves it. To pin a version: `docker build --build-arg PLUGIN_VERSION=v1.0.0 .`
+
+API used by the plugin: `POST /api/login` · `POST /api/logout` · `GET /api/manifest` ·
+`POST /api/blobs/missing` · `PUT|GET /api/blobs/{md5}` · `POST /api/items` · `POST /api/items/delete`.
+Interactive docs are at `/api/docs`.
