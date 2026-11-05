@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="summary">
+  <h1>Your KOReader profile</h1>
+  <p class="muted">{{ item_count }} item{{ '' if item_count == 1 else 's' }} &middot; {{ total_size | size }}</p>
+</section>
+
+<details class="card" {% if item_count == 0 %}open{% endif %}>
+  <summary><strong>Set up a device</strong></summary>
+  <ol class="steps">
+    <li>Download <a href="/plugin.zip">kodevicesync.koplugin.zip</a> and unzip it into your KOReader <code>plugins/</code> folder
+      (Kobo/Kindle: <code>koreader/plugins/</code>, Android: <code>koreader/plugins/</code> on internal storage).</li>
+    <li>Restart KOReader, then open <em>Tools &rsaquo; KODeviceSync</em>.</li>
+    <li>Set the server to <code>{{ server_url }}</code> and log in as <strong>{{ user.username }}</strong>.</li>
+    <li>On your main device: <em>Choose what to sync</em>, then <em>Push this device's setup</em>.<br>
+        On a new device: <em>Pull setup from server</em>.</li>
+  </ol>
+</details>
+
+{% for g in groups %}
+<section class="card">
+  <h2>{{ g.label }} <span class="count">{{ g.entries | length }}</span></h2>
+  {% if g.entries %}
+  <table>
+    <thead><tr><th>Name</th><th class="num">Files</th><th class="num">Size</th><th>Updated</th><th></th></tr></thead>
+    <tbody>
+    {% for i in g.entries %}
+      <tr>
+        <td class="name">{{ i.name }}<div class="muted small">from {{ i.source or 'unknown' }}</div></td>
+        <td class="num">{{ i.count }}</td>
+        <td class="num">{{ i.size | size }}</td>
+        <td class="nowrap">{{ i.updated | when }}</td>
+        <td class="actions">
+          <a href="/items/{{ i.id }}/download">Download</a>
+          <form method="post" action="/items/{{ i.id }}/delete" class="inline"
+                onsubmit="return confirm('Remove {{ i.name }} from your profile? It will not be deleted from devices.');">
+            <button class="link danger">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nothing yet.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<section class="card">
+  <h2>Add from your computer</h2>
+  <p class="muted">Plugins: upload the plugin's .zip (a release zip or GitHub's “Download ZIP” both work).
+     Patches, fonts, style tweaks: upload a single file or a .zip of several.</p>
+  <form method="post" action="/upload" enctype="multipart/form-data" class="row">
+    <select name="category">
+      {% for id, label in categories.items() %}<option value="{{ id }}">{{ label }}</option>{% endfor %}
+    </select>
+    <input type="file" name="file" required>
+    <input name="name" placeholder="Name (optional)">
+    <button class="primary">Upload</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Signed-in devices</h2>
+  <table>
+    <thead><tr><th>Device</th><th>Signed in</th><th>Last seen</th><th></th></tr></thead>
+    <tbody>
+    {% for d in devices %}
+      <tr>
+        <td>{{ d.label }}{% if d.id == current_token_id %} <span class="tag">this browser</span>{% endif %}</td>
+        <td class="nowrap">{{ d.created | when }}</td>
+        <td class="nowrap">{{ d.last_used | when }}</td>
+        <td class="actions">
+          {% if d.id != current_token_id %}
+          <form method="post" action="/devices/{{ d.id }}/revoke" class="inline"><button class="link danger">Sign out</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

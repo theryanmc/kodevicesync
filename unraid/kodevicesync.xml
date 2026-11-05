@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>kodevicesync</Name>
+  <Repository>ghcr.io/theryanmc/kodevicesync:latest</Repository>
+  <Registry>https://github.com/theryanmc/kodevicesync/pkgs/container/kodevicesync</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Shell>sh</Shell>
+  <Support>https://github.com/theryanmc/kodevicesync</Support>
+  <Project>https://github.com/theryanmc/kodevicesync</Project>
+  <Overview>Keep a profile of your KOReader plugins, user patches, fonts and style tweaks, and sync them onto any device with the kodevicesync KOReader plugin.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:1379]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/koreader/koreader/master/resources/koreader.png</Icon>
+  <Config Name="Web UI / API port" Target="1379" Default="1379" Mode="tcp" Description="Port the KOReader plugin and your browser connect to." Type="Port" Display="always" Required="true" Mask="false">1379</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/kodevicesync" Mode="rw" Description="Database and stored add-on files." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/kodevicesync</Config>
+  <Config Name="Allow sign-ups" Target="KDS_ALLOW_SIGNUP" Default="true" Mode="" Description="Set to false after creating your profile(s)." Type="Variable" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Max upload (MB)" Target="KDS_MAX_UPLOAD_MB" Default="200" Mode="" Description="Largest single file or zip accepted." Type="Variable" Display="advanced" Required="false" Mask="false">200</Config>
+  <Config Name="Secure cookies" Target="KDS_SECURE_COOKIES" Default="false" Mode="" Description="Set to true if you only reach the web UI over HTTPS (reverse proxy)." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>

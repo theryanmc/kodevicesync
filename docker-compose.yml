@@ -1,0 +1,15 @@
+services:
+  kodevicesync:
+    build: .
+    image: kodevicesync:latest
+    container_name: kodevicesync
+    restart: unless-stopped
+    ports:
+      - "1379:1379"
+    environment:
+      PUID: "99"
+      PGID: "100"
+      KDS_ALLOW_SIGNUP: "true"     # set to "false" once you've created your profile
+      KDS_MAX_UPLOAD_MB: "200"
+    volumes:
+      - /mnt/user/appdata/kodevicesync:/data

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card narrow">
+  {% if mode == "register" %}
+  <h1>Create a profile</h1>
+  <form method="post" action="/register" class="stack">
+    <label>Username <input name="username" value="{{ username or '' }}" autocomplete="username" required autofocus></label>
+    <label>Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label>Confirm password <input name="password2" type="password" autocomplete="new-password" minlength="8" required></label>
+    <button class="primary">Create profile</button>
+  </form>
+  <p class="muted">Already have one? <a href="/login">Log in</a></p>
+  {% else %}
+  <h1>Log in</h1>
+  <form method="post" action="/login" class="stack">
+    <label>Username <input name="username" value="{{ username or '' }}" autocomplete="username" required autofocus></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <button class="primary">Log in</button>
+  </form>
+  {% if allow_signup %}<p class="muted">New here? <a href="/register">Create a profile</a></p>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}
